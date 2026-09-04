@@ -13,10 +13,19 @@
     if (!iso) return '';
     return iso.replace('T', ' ').slice(0, 16) + ' UTC';
   }
+  // When sorted by date, break the list into day sections so a page of results
+  // reads as a handful of days rather than one undifferentiated wall of rows.
+  var groupByDate = sort === 'date_desc' || sort === 'date_asc';
+  var colCount = currentUser.role === 'admin' ? 5 : 4;
 %>
 
 <div class="page-head">
-  <h1>Bill records <span class="muted">(<%= total %>)</span></h1>
+  <div>
+    <h1>Bill records <span class="muted">(<%= total %>)</span></h1>
+    <% if (total > 0) { %>
+      <p class="muted range-hint">Showing <%= rangeStart %>&ndash;<%= rangeEnd %> of <%= total %></p>
+    <% } %>
+  </div>
   <div class="actions">
     <a class="button" href="/bills/export.csv<%= q ? '?q=' + encodeURIComponent(q) : '' %>">Export CSV</a>
     <% if (currentUser.role === 'admin') { %>
@@ -53,7 +62,13 @@
     </tr>
   </thead>
   <tbody>
+    <% var lastGroup = null; %>
     <% bills.forEach(function (b) { %>
+    <% if (groupByDate) {
+         var g = b.bill_date || 'No date';
+         if (g !== lastGroup) { lastGroup = g; %>
+    <tr class="date-group"><td class="date-group-cell" colspan="<%= colCount %>"><%= g %></td></tr>
+    <% } } %>
     <tr>
       <td class="mono" data-label="Bill number"><%= b.bill_number %></td>
       <td class="nowrap" data-label="Date"><%= b.bill_date || '' %></td>

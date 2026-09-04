@@ -7,7 +7,7 @@ const { recordAudit, diff } = require('../audit');
 
 const router = express.Router();
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 25;
 const BILL_FIELDS = ['bill_number', 'bill_date', 'note'];
 
 const listSelect = `
@@ -98,6 +98,8 @@ router.get('/', async (req, res) => {
     page: current,
     pages,
     total,
+    rangeStart: total === 0 ? 0 : offset + 1,
+    rangeEnd: Math.min(offset + PAGE_SIZE, total),
     flash,
   });
 });

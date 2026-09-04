@@ -39,6 +39,9 @@ Open <http://localhost:3000> and sign in.
   stray junk before it reaches thousands of rows. Editing an existing record has no confirm step.
 - **Find a record**: type the **exact** bill number into the search box (case-insensitive).
   A partial number or a note keyword returns nothing, with a "check for a typo" hint.
+- **Browsing hundreds of records**: the default view is sorted by date (newest first) and
+  broken into day sections, 25 per page, so a page reads as a handful of days rather than
+  an undifferentiated wall of rows. Switch to sorting by bill number to see a flat list.
 - **Export**: *Export CSV* downloads the current list (respects the active search) for
   handing to an auditor.
 - **Audit log** (admin): *Audit log* shows who did what and when, filterable by action

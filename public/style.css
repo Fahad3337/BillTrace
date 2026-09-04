@@ -413,6 +413,23 @@ table.grid tbody tr:nth-child(even) { background: var(--card-sunken); }
 table.grid tbody tr:hover { background: var(--accent-soft); }
 table.grid tbody tr:last-child td { border-bottom: none; }
 
+/* Date-section header row, shown when the list is sorted by date. */
+tr.date-group,
+table.grid tbody tr.date-group:nth-child(even) { background: transparent; }
+tr.date-group:hover { background: transparent; }
+.date-group-cell {
+  background: var(--card-sunken);
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  padding: 7px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.range-hint { margin: 2px 0 0; font-size: 13px; }
+
 .mono { font-family: var(--mono); font-size: .93em; }
 td.mono { font-weight: 600; color: var(--ink); white-space: nowrap; }
 td.nowrap, .nowrap { white-space: nowrap; }
@@ -569,7 +586,24 @@ td.row-actions > * + * { margin-left: 16px; }
     color: var(--muted);
   }
   table.grid td:empty { display: none; }
-  table.grid td:not([data-label]):not(.row-actions) { display: none; }
+  table.grid td:not([data-label]):not(.row-actions):not(.date-group-cell) { display: none; }
+
+  /* Date-section headers: plain section labels, not cards. */
+  table.grid tbody tr.date-group,
+  table.grid tbody tr.date-group:nth-child(even) {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    margin: 18px 0 6px;
+    padding: 0;
+  }
+  table.grid tr.date-group:first-child { margin-top: 0; }
+  table.grid td.date-group-cell {
+    display: block;
+    border: none;
+    border-radius: var(--radius-sm);
+  }
+
   table.grid td.row-actions {
     display: flex;
     justify-content: flex-end;
