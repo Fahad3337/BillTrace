@@ -7,9 +7,11 @@
       .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))
       .join('&');
   }
-  function fmtDateTime(iso) {
+  // Server sends UTC ISO strings; the <time> element is localised by app.js,
+  // and this is the no-JS fallback text.
+  function utcFallback(iso) {
     if (!iso) return '';
-    return iso.replace('T', ' ').slice(0, 16);
+    return iso.replace('T', ' ').slice(0, 16) + ' UTC';
   }
 %>
 
@@ -57,7 +59,8 @@
       <td class="nowrap" data-label="Date"><%= b.bill_date || '' %></td>
       <td data-label="Note"><%= b.note || '' %></td>
       <td class="muted" data-label="Last updated">
-        <%= fmtDateTime(b.updated_at || b.created_at) %>
+        <% var ts = b.updated_at || b.created_at; %>
+        <% if (ts) { %><time class="localtime" datetime="<%= ts %>"><%= utcFallback(ts) %></time><% } %>
         <% if (b.updated_by_name || b.created_by_name) { %>
           by <%= b.updated_by_name || b.created_by_name %>
         <% } %>
