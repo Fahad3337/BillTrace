@@ -79,6 +79,12 @@ router.get('/', async (req, res) => {
     [...params, PAGE_SIZE, offset]
   );
 
+  // Read and clear the flash BEFORE rendering — res.render ends the response and
+  // persists the session, so deleting afterwards leaves the message in the store
+  // and it shows again on the next page.
+  const flash = req.session.flash || null;
+  delete req.session.flash;
+
   res.render('bills/list', {
     title: 'Bill records',
     bills: rows,
@@ -87,9 +93,8 @@ router.get('/', async (req, res) => {
     page: current,
     pages,
     total,
-    flash: req.session.flash || null,
+    flash,
   });
-  delete req.session.flash;
 });
 
 // ---- CSV export ----------------------------------------------------------

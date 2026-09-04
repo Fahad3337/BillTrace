@@ -132,6 +132,16 @@ test('CSV export is available to a viewer and has the expected header', async ()
   assert.match(res.text.split('\n')[0], /^bill_number,bill_date,note,created_at,created_by,updated_at,updated_by$/);
 });
 
+test('the success flash shows exactly once, then is gone', async () => {
+  await addBill(admin, { bill_number: 'FLASH-1' });
+
+  const first = await admin.get('/');
+  assert.match(first.text, /Bill FLASH-1 added\./);
+
+  const second = await admin.get('/');
+  assert.doesNotMatch(second.text, /Bill FLASH-1 added\./);
+});
+
 test('the list renders timestamps as localisable <time> elements (UTC fallback text)', async () => {
   await addBill(admin, { bill_number: 'TS-1', bill_date: '2026-09-01' });
   const res = await admin.get('/');

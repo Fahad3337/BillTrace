@@ -80,6 +80,10 @@ router.get('/audit', requireAdmin, async (req, res) => {
     )
   ).map((r) => ({ ...r, details: r.details ? JSON.parse(r.details) : null }));
 
+  // Clear the flash before rendering (see the note in routes/bills.js).
+  const flash = req.session.flash || null;
+  delete req.session.flash;
+
   res.render('audit', {
     title: 'Audit log',
     rows,
@@ -89,9 +93,8 @@ router.get('/audit', requireAdmin, async (req, res) => {
     page: current,
     pages,
     total,
-    flash: req.session.flash || null,
+    flash,
   });
-  delete req.session.flash;
 });
 
 // ---- CSV export (honours the same action / bill-number filters) -----------
