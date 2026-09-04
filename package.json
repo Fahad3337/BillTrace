@@ -1,0 +1,30 @@
+{
+  "name": "indent-recorder",
+  "version": "1.0.0",
+  "description": "Insurance bill number recorder for record-keeping and audit",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "create-user": "node scripts/create-user.js",
+    "test": "node --test --test-force-exit \"test/*.test.js\""
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^13.0.3",
+    "better-sqlite3-session-store": "^0.1.0",
+    "connect-pg-simple": "^10.0.0",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-async-errors": "^3.1.1",
+    "express-rate-limit": "^7.5.0",
+    "express-session": "^1.18.1",
+    "helmet": "^8.0.0",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "supertest": "^7.2.2"
+  }
+}

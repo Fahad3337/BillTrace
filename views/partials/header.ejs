@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> · Bill Recorder</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<% if (typeof currentUser !== 'undefined' && currentUser) { %>
+<header class="topbar">
+  <a class="brand" href="/">Bill Recorder</a>
+  <nav>
+    <a href="/" class="<%= currentPath === '/' ? 'active' : '' %>">Records</a>
+    <% if (currentUser.role === 'admin') { %>
+      <a href="/audit" class="<%= currentPath === '/audit' ? 'active' : '' %>">Audit log</a>
+      <a href="/users" class="<%= currentPath === '/users' ? 'active' : '' %>">Users</a>
+    <% } %>
+  </nav>
+  <div class="user">
+    <span class="whoami"><strong><%= currentUser.username %></strong>
+      <span class="role-pill <%= currentUser.role %>"><%= currentUser.role %></span>
+    </span>
+    <form method="post" action="/logout"><button type="submit">Sign out</button></form>
+  </div>
+</header>
+<% } %>
+<main class="container">

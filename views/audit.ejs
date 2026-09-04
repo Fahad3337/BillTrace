@@ -1,0 +1,61 @@
+<%- include('partials/header') %>
+<%
+  function summarise(row) {
+    const d = row.details;
+    if (!d) return '';
+    if (d.values) {
+      return Object.entries(d.values).map(([k, v]) => k + '=' + (v ?? '')).join(', ');
+    }
+    if (d.changes) {
+      return Object.entries(d.changes)
+        .map(([k, c]) => k + ': "' + (c.from ?? '') + '" → "' + (c.to ?? '') + '"')
+        .join('; ');
+    }
+    if (d.username) return 'user: ' + d.username + (d.role ? ' (' + d.role + ')' : '');
+    return JSON.stringify(d);
+  }
+%>
+
+<h1>Audit log <span class="muted">(<%= total %>)</span></h1>
+
+<form class="search" method="get" action="/audit">
+  <select name="action">
+    <option value="">All actions</option>
+    <% actions.forEach(function (a) { %>
+      <option value="<%= a %>" <%= action === a ? 'selected' : '' %>><%= a %></option>
+    <% }); %>
+  </select>
+  <input type="text" name="bill_number" value="<%= billNumber %>" placeholder="Bill number">
+  <button type="submit">Filter</button>
+  <% if (action || billNumber) { %><a class="button ghost" href="/audit">Clear</a><% } %>
+</form>
+
+<div class="table-wrap">
+<table class="grid">
+  <thead>
+    <tr><th>When (UTC)</th><th>User</th><th>Action</th><th>Bill</th><th>Details</th></tr>
+  </thead>
+  <tbody>
+    <% rows.forEach(function (r) { %>
+    <tr>
+      <td class="muted nowrap"><%= r.ts.replace('T', ' ').slice(0, 19) %></td>
+      <td><%= r.username || '—' %></td>
+      <td><span class="tag tag--<%= r.action %>"><%= r.action %></span></td>
+      <td class="mono"><%= r.bill_number || '' %></td>
+      <td class="details"><%= summarise(r) %></td>
+    </tr>
+    <% }); %>
+  </tbody>
+</table>
+</div>
+
+<% if (pages > 1) { %>
+<nav class="pager">
+  <% var base = 'action=' + encodeURIComponent(action) + '&bill_number=' + encodeURIComponent(billNumber); %>
+  <% if (page > 1) { %><a href="/audit?<%= base %>&page=<%= page - 1 %>">&larr; Prev</a><% } %>
+  <span>Page <%= page %> of <%= pages %></span>
+  <% if (page < pages) { %><a href="/audit?<%= base %>&page=<%= page + 1 %>">Next &rarr;</a><% } %>
+</nav>
+<% } %>
+
+<%- include('partials/footer') %>

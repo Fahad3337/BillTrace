@@ -1,0 +1,84 @@
+<%- include('../partials/header') %>
+<%
+  function qs(overrides) {
+    const p = Object.assign({ q, sort, page }, overrides);
+    return Object.entries(p)
+      .filter(([, v]) => v !== '' && v != null)
+      .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))
+      .join('&');
+  }
+  function fmtDateTime(iso) {
+    if (!iso) return '';
+    return iso.replace('T', ' ').slice(0, 16);
+  }
+%>
+
+<div class="page-head">
+  <h1>Bill records <span class="muted">(<%= total %>)</span></h1>
+  <div class="actions">
+    <a class="button" href="/bills/export.csv<%= q ? '?q=' + encodeURIComponent(q) : '' %>">Export CSV</a>
+    <% if (currentUser.role === 'admin') { %>
+      <a class="button primary" href="/bills/new">Add record</a>
+    <% } %>
+  </div>
+</div>
+
+<% if (flash) { %><p class="alert <%= flash.type === 'ok' ? 'ok' : 'error' %>"><%= flash.message %></p><% } %>
+
+<form class="search" method="get" action="/">
+  <input type="text" name="q" value="<%= q %>" placeholder="Search bill number or note">
+  <input type="hidden" name="sort" value="<%= sort %>">
+  <button type="submit">Search</button>
+  <% if (q) { %><a class="button ghost" href="/">Clear</a><% } %>
+</form>
+
+<% if (bills.length === 0) { %>
+  <p class="empty">No records<%= q ? ' match your search' : ' yet' %>.</p>
+<% } else { %>
+<div class="table-wrap">
+<table class="grid">
+  <thead>
+    <tr>
+      <th><a href="/?<%= qs({ sort: sort === 'number_asc' ? 'number_desc' : 'number_asc', page: 1 }) %>">Bill number</a></th>
+      <th><a href="/?<%= qs({ sort: sort === 'date_desc' ? 'date_asc' : 'date_desc', page: 1 }) %>">Date</a></th>
+      <th>Note</th>
+      <th>Last updated</th>
+      <% if (currentUser.role === 'admin') { %><th></th><% } %>
+    </tr>
+  </thead>
+  <tbody>
+    <% bills.forEach(function (b) { %>
+    <tr>
+      <td class="mono"><%= b.bill_number %></td>
+      <td class="nowrap"><%= b.bill_date || '' %></td>
+      <td><%= b.note || '' %></td>
+      <td class="muted">
+        <%= fmtDateTime(b.updated_at || b.created_at) %>
+        <% if (b.updated_by_name || b.created_by_name) { %>
+          by <%= b.updated_by_name || b.created_by_name %>
+        <% } %>
+      </td>
+      <% if (currentUser.role === 'admin') { %>
+      <td class="row-actions">
+        <a href="/bills/<%= b.id %>/edit">Edit</a>
+        <form method="post" action="/bills/<%= b.id %>/delete" data-confirm="Delete bill <%= b.bill_number %>?">
+          <button type="submit" class="link danger">Delete</button>
+        </form>
+      </td>
+      <% } %>
+    </tr>
+    <% }); %>
+  </tbody>
+</table>
+</div>
+
+<% if (pages > 1) { %>
+<nav class="pager">
+  <% if (page > 1) { %><a href="/?<%= qs({ page: page - 1 }) %>">&larr; Prev</a><% } %>
+  <span>Page <%= page %> of <%= pages %></span>
+  <% if (page < pages) { %><a href="/?<%= qs({ page: page + 1 }) %>">Next &rarr;</a><% } %>
+</nav>
+<% } %>
+<% } %>
+
+<%- include('../partials/footer') %>

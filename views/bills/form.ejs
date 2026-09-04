@@ -1,0 +1,27 @@
+<%- include('../partials/header') %>
+<div class="card form-card">
+  <h1><%= mode === 'new' ? 'Add bill record' : 'Edit bill record' %></h1>
+
+  <% if (errors.length) { %>
+    <div class="alert error">
+      <ul><% errors.forEach(function (e) { %><li><%= e %></li><% }); %></ul>
+    </div>
+  <% } %>
+
+  <form method="post" action="<%= mode === 'new' ? '/bills' : '/bills/' + bill.id %>">
+    <label>Bill number *
+      <input type="text" name="bill_number" value="<%= bill.bill_number || '' %>" maxlength="100" autofocus required>
+    </label>
+    <label>Bill date
+      <input type="date" name="bill_date" value="<%= bill.bill_date || '' %>">
+    </label>
+    <label>Note
+      <textarea name="note" rows="3" maxlength="1000" placeholder="Optional context (insurer, claim reference, etc.)"><%= bill.note || '' %></textarea>
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="primary"><%= mode === 'new' ? 'Add record' : 'Save changes' %></button>
+      <a class="button ghost" href="/">Cancel</a>
+    </div>
+  </form>
+</div>
+<%- include('../partials/footer') %>

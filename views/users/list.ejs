@@ -1,0 +1,56 @@
+<%- include('../partials/header') %>
+<h1>Users</h1>
+
+<% if (notice) { %><p class="alert ok"><%= notice %></p><% } %>
+<% if (errors.length) { %>
+  <div class="alert error"><ul><% errors.forEach(function (e) { %><li><%= e %></li><% }); %></ul></div>
+<% } %>
+
+<div class="table-wrap">
+<table class="grid">
+  <thead>
+    <tr><th>Username</th><th>Role</th><th>Created</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+    <% users.forEach(function (u) { %>
+    <tr>
+      <td class="mono"><%= u.username %></td>
+      <td><span class="role-pill <%= u.role %>"><%= u.role %></span></td>
+      <td class="muted"><%= (u.created_at || '').slice(0, 10) %></td>
+      <td class="row-actions">
+        <form method="post" action="/users/<%= u.id %>/password" class="inline-pw">
+          <input type="password" name="password" placeholder="New password" minlength="8" required>
+          <button type="submit" class="link">Reset password</button>
+        </form>
+        <form method="post" action="/users/<%= u.id %>/delete" data-confirm="Delete user <%= u.username %>?">
+          <button type="submit" class="link danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    <% }); %>
+  </tbody>
+</table>
+</div>
+
+<div class="card form-card">
+  <h2>Add user</h2>
+  <form method="post" action="/users">
+    <label>Username
+      <input type="text" name="username" pattern="[A-Za-z0-9._-]{3,50}" required>
+    </label>
+    <label>Role
+      <select name="role">
+        <option value="viewer">viewer — read only</option>
+        <option value="admin">admin — can edit records &amp; manage users</option>
+      </select>
+    </label>
+    <label>Password
+      <input type="password" name="password" minlength="8" required>
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="primary">Create user</button>
+    </div>
+  </form>
+</div>
+
+<%- include('../partials/footer') %>
