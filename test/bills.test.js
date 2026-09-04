@@ -2,7 +2,7 @@
 
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { db, request, init, createUser, loginAs, cleanup } = require('./helpers');
+const { db, init, createUser, loginAs, createBill, cleanup } = require('./helpers');
 
 let admin; // supertest agent
 let viewer;
@@ -16,15 +16,13 @@ before(async () => {
 });
 after(cleanup);
 
-async function addBill(agent, fields) {
-  return agent.post('/bills').type('form').send({ bill_number: '', bill_date: '', note: '', ...fields });
-}
+const addBill = createBill;
 
 test('admin can add a bill and it is stored + audited', async () => {
-  const res = await addBill(admin, { bill_number: 'B-1001', bill_date: '2026-09-01', note: 'first' });
+  const res = await addBill(admin, { bill_number: '71001', bill_date: '2026-09-01', note: 'first' });
   assert.equal(res.status, 302);
 
-  const row = await db.get('SELECT * FROM bills WHERE bill_number = ?', ['B-1001']);
+  const row = await db.get('SELECT * FROM bills WHERE bill_number = ?', ['71001']);
   assert.ok(row);
   assert.equal(row.note, 'first');
   assert.equal(row.created_by, (await db.get("SELECT id FROM users WHERE username = 'admin'")).id);
@@ -39,32 +37,37 @@ test('a bill with no number is rejected with a validation error', async () => {
   assert.match(res.text, /Bill number is required/);
 });
 
+test('a non-numeric bill number is rejected', async () => {
+  const res = await addBill(admin, { bill_number: 'test' });
+  assert.equal(res.status, 400);
+  assert.match(res.text, /digits only/i);
+  assert.equal(await db.get('SELECT * FROM bills WHERE bill_number = ?', ['test']), undefined);
+});
+
+test('the confirm field must match the bill number', async () => {
+  const res = await addBill(admin, { bill_number: '70100', bill_number_confirm: '70200' });
+  assert.equal(res.status, 400);
+  assert.match(res.text, /do not match/i);
+  assert.equal(await db.get('SELECT * FROM bills WHERE bill_number = ?', ['70100']), undefined);
+});
+
 test('a bad date format is rejected', async () => {
-  const res = await addBill(admin, { bill_number: 'B-BADDATE', bill_date: '01-09-2026' });
+  const res = await addBill(admin, { bill_number: '70001', bill_date: '01-09-2026' });
   assert.equal(res.status, 400);
   assert.match(res.text, /YYYY-MM-DD/);
 });
 
 test('a duplicate bill number returns 409', async () => {
-  await addBill(admin, { bill_number: 'B-DUP' });
-  const res = await addBill(admin, { bill_number: 'B-DUP' });
+  await addBill(admin, { bill_number: '70002' });
+  const res = await addBill(admin, { bill_number: '70002' });
   assert.equal(res.status, 409);
   assert.match(res.text, /already exists/);
 });
 
 test('a viewer cannot add a bill', async () => {
-  const res = await addBill(viewer, { bill_number: 'B-VIEWER' });
+  const res = await addBill(viewer, { bill_number: '70003' });
   assert.equal(res.status, 403);
-  const row = await db.get('SELECT * FROM bills WHERE bill_number = ?', ['B-VIEWER']);
-  assert.equal(row, undefined);
-});
-
-test('search is an exact bill-number match (case-insensitive)', async () => {
-  await addBill(admin, { bill_number: 'ABC-XYZ-9', note: 'findable note' });
-
-  const exact = await admin.get('/').query({ q: 'abc-xyz-9' });
-  assert.equal(exact.status, 200);
-  assert.match(exact.text, /ABC-XYZ-9/);
+  assert.equal(await db.get('SELECT * FROM bills WHERE bill_number = ?', ['70003']), undefined);
 });
 
 // Helper: the "(N)" total the list header renders.
@@ -72,17 +75,24 @@ function shownTotal(html) {
   return Number(html.match(/Bill records <span class="muted">\((\d+)\)<\/span>/)[1]);
 }
 
+test('search is an exact bill-number match', async () => {
+  await addBill(admin, { bill_number: '72229', note: 'findable note' });
+  const res = await admin.get('/').query({ q: '72229' });
+  assert.equal(res.status, 200);
+  assert.match(res.text, /72229/);
+});
+
 test('a partial bill number returns nothing and shows the typo hint', async () => {
-  await addBill(admin, { bill_number: 'PARTIAL-1234' });
+  await addBill(admin, { bill_number: '71234' });
   await admin.get('/'); // clear the "added" flash
-  const res = await admin.get('/').query({ q: 'PARTIAL' });
+  const res = await admin.get('/').query({ q: '712' });
   assert.equal(res.status, 200);
   assert.equal(shownTotal(res.text), 0);
   assert.match(res.text, /typo/i);
 });
 
 test('search does not match on the note field', async () => {
-  await addBill(admin, { bill_number: 'NOTE-HOST-1', note: 'special-keyword' });
+  await addBill(admin, { bill_number: '70004', note: 'special-keyword' });
   await admin.get('/');
   const res = await admin.get('/').query({ q: 'special-keyword' });
   assert.equal(res.status, 200);
@@ -90,18 +100,26 @@ test('search does not match on the note field', async () => {
 });
 
 test('admin can edit a bill', async () => {
-  await addBill(admin, { bill_number: 'B-EDIT', note: 'before' });
-  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['B-EDIT']);
+  await addBill(admin, { bill_number: '70005', note: 'before' });
+  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['70005']);
 
   const res = await admin
     .post(`/bills/${id}`)
     .type('form')
-    .send({ bill_number: 'B-EDIT', bill_date: '2026-10-10', note: 'after' });
+    .send({ bill_number: '70005', bill_date: '2026-10-10', note: 'after' });
   assert.equal(res.status, 302);
 
   const row = await db.get('SELECT * FROM bills WHERE id = ?', [id]);
   assert.equal(row.note, 'after');
   assert.equal(row.bill_date, '2026-10-10');
+});
+
+test('editing to a non-numeric bill number is rejected', async () => {
+  await addBill(admin, { bill_number: '70009' });
+  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['70009']);
+  const res = await admin.post(`/bills/${id}`).type('form').send({ bill_number: 'oops', bill_date: '', note: '' });
+  assert.equal(res.status, 400);
+  assert.match(res.text, /digits only/i);
 });
 
 test('editing a non-existent bill returns 404', async () => {
@@ -115,8 +133,8 @@ test('a non-numeric bill id returns 404, not 500', async () => {
 });
 
 test('admin can delete a bill (and it is audited)', async () => {
-  await addBill(admin, { bill_number: 'B-DELETE' });
-  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['B-DELETE']);
+  await addBill(admin, { bill_number: '70006' });
+  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['70006']);
 
   const res = await admin.post(`/bills/${id}/delete`).type('form').send({});
   assert.equal(res.status, 302);
@@ -133,17 +151,17 @@ test('CSV export is available to a viewer and has the expected header', async ()
 });
 
 test('the success flash shows exactly once, then is gone', async () => {
-  await addBill(admin, { bill_number: 'FLASH-1' });
+  await addBill(admin, { bill_number: '70007' });
 
   const first = await admin.get('/');
-  assert.match(first.text, /Bill FLASH-1 added\./);
+  assert.match(first.text, /Bill 70007 added\./);
 
   const second = await admin.get('/');
-  assert.doesNotMatch(second.text, /Bill FLASH-1 added\./);
+  assert.doesNotMatch(second.text, /Bill 70007 added\./);
 });
 
 test('the list renders timestamps as localisable <time> elements (UTC fallback text)', async () => {
-  await addBill(admin, { bill_number: 'TS-1', bill_date: '2026-09-01' });
+  await addBill(admin, { bill_number: '70008', bill_date: '2026-09-01' });
   const res = await admin.get('/');
   assert.match(res.text, /<time class="localtime" datetime="20\d\d-\d\d-\d\dT[\d:.]+Z">/);
   assert.match(res.text, /\d\d:\d\d UTC<\/time>/);

@@ -34,7 +34,9 @@ Open <http://localhost:3000> and sign in.
 
 ## Everyday use
 
-- **Add a record**: *Add record* → enter the bill number, pick the date, optional note.
+- **Add a record**: *Add record* → type the bill number (**digits only**), type it again to
+  confirm, pick the date, optional note. The two entries must match — this catches typos and
+  stray junk before it reaches thousands of rows. Editing an existing record has no confirm step.
 - **Find a record**: type the **exact** bill number into the search box (case-insensitive).
   A partial number or a note keyword returns nothing, with a "check for a typo" hint.
 - **Export**: *Export CSV* downloads the current list (respects the active search) for
@@ -130,6 +132,9 @@ point-in-time recovery and manual `pg_dump` exports are also available there.
 - Bill numbers must be unique; adding a duplicate shows an error. If your bill numbers
   can legitimately repeat, relax the `UNIQUE` constraint on `bills.bill_number` in
   `src/db/schema.sqlite.sql` and `src/db/schema.postgres.sql`.
+- Bill numbers are validated as **digits only** (max 20). If yours contain letters or
+  symbols, adjust the `/^\d+$/` check in `validateBill` in `src/routes/bills.js` and the
+  `pattern` on the inputs in `views/bills/form.ejs`.
 
 ## Project layout
 

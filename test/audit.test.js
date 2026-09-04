@@ -2,9 +2,17 @@
 
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const { db, init, createUser, loginAs, cleanup } = require('./helpers');
+const { db, init, createUser, loginAs, createBill, cleanup } = require('./helpers');
 
 let admin;
+
+// Edit a bill through the form (used to generate 'update' audit rows).
+function editBill(agent, id, fields) {
+  return agent
+    .post(`/bills/${id}`)
+    .type('form')
+    .send({ bill_number: '', bill_date: '', note: '', ...fields });
+}
 
 before(async () => {
   await init();
@@ -13,8 +21,8 @@ before(async () => {
   admin = await loginAs('admin');
 
   // Generate a couple of audited events.
-  await admin.post('/bills').type('form').send({ bill_number: 'AUD-1', bill_date: '', note: '' });
-  await admin.post('/bills').type('form').send({ bill_number: 'AUD-2', bill_date: '', note: '' });
+  await createBill(admin, { bill_number: '60001' });
+  await createBill(admin, { bill_number: '60002' });
 });
 after(cleanup);
 
@@ -28,13 +36,12 @@ test('admin sees the audit log', async () => {
   const res = await admin.get('/audit');
   assert.equal(res.status, 200);
   assert.match(res.text, /Audit log/);
-  assert.match(res.text, /AUD-1/);
+  assert.match(res.text, /60001/);
   // timestamps are localisable <time> elements, not bare UTC text
   assert.match(res.text, /<time class="localtime" datetime="20\d\d-\d\d-\d\dT[\d:.]+Z">/);
 });
 
 test('the action filter narrows the results', async () => {
-  // login rows exist alongside the two create rows...
   assert.ok((await db.all("SELECT 1 FROM audit_log WHERE action = 'login'")).length > 0);
 
   const all = await admin.get('/audit');
@@ -46,13 +53,13 @@ test('the action filter narrows the results', async () => {
 
   assert.equal(totalCreate, 2, 'exactly the two bill-create events');
   assert.ok(totalCreate < totalAll, 'the filter excludes the login rows');
-  assert.match(res.text, /AUD-1/);
+  assert.match(res.text, /60001/);
 });
 
-test('the bill-number filter matches case-insensitively', async () => {
-  const res = await admin.get('/audit').query({ bill_number: 'aud-1' });
+test('the bill-number filter works', async () => {
+  const res = await admin.get('/audit').query({ bill_number: '60001' });
   assert.equal(res.status, 200);
-  assert.match(res.text, /AUD-1/);
+  assert.match(res.text, /60001/);
 });
 
 // ---- CSV export --------------------------------------------------------------
@@ -65,7 +72,7 @@ test('admin can export the audit log as CSV', async () => {
 
   const [head, ...rows] = res.text.trim().split('\n');
   assert.equal(head, 'timestamp,user,action,bill_number,details');
-  assert.ok(rows.some((r) => r.includes('AUD-1') && r.includes('create')));
+  assert.ok(rows.some((r) => r.includes('60001') && r.includes('create')));
 });
 
 test('the CSV export honours the action filter', async () => {
@@ -92,17 +99,17 @@ async function auditId(where) {
 }
 
 test('an admin can restore a deleted bill from its audit entry', async () => {
-  await admin.post('/bills').type('form').send({ bill_number: 'REST-1', bill_date: '2026-01-02', note: 'keep me' });
-  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['REST-1']);
+  await createBill(admin, { bill_number: '61001', bill_date: '2026-01-02', note: 'keep me' });
+  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['61001']);
   await admin.post(`/bills/${id}/delete`).type('form').send({});
-  assert.equal(await db.get('SELECT * FROM bills WHERE bill_number = ?', ['REST-1']), undefined);
+  assert.equal(await db.get('SELECT * FROM bills WHERE bill_number = ?', ['61001']), undefined);
 
   const delId = await auditId("action = 'delete'");
   const res = await admin.post(`/audit/${delId}/restore`).type('form').send({});
   assert.equal(res.status, 302);
   assert.equal(res.headers.location, '/');
 
-  const back = await db.get('SELECT * FROM bills WHERE bill_number = ?', ['REST-1']);
+  const back = await db.get('SELECT * FROM bills WHERE bill_number = ?', ['61001']);
   assert.ok(back, 'the bill exists again');
   assert.equal(back.bill_date, '2026-01-02');
   assert.equal(back.note, 'keep me');
@@ -110,17 +117,17 @@ test('an admin can restore a deleted bill from its audit entry', async () => {
 });
 
 test('restore fails cleanly when the bill number is taken again', async () => {
-  await admin.post('/bills').type('form').send({ bill_number: 'REST-2', bill_date: '', note: '' });
-  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['REST-2']);
+  await createBill(admin, { bill_number: '61002' });
+  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['61002']);
   await admin.post(`/bills/${id}/delete`).type('form').send({});
-  await admin.post('/bills').type('form').send({ bill_number: 'REST-2', bill_date: '', note: 'squatter' });
+  await createBill(admin, { bill_number: '61002', note: 'squatter' });
 
   const delId = await auditId("action = 'delete' AND bill_id = " + id);
   const res = await admin.post(`/audit/${delId}/restore`).type('form').send({});
   assert.equal(res.status, 302);
   assert.equal(res.headers.location, '/audit');
 
-  const rows = await db.all('SELECT * FROM bills WHERE bill_number = ?', ['REST-2']);
+  const rows = await db.all('SELECT * FROM bills WHERE bill_number = ?', ['61002']);
   assert.equal(rows.length, 1, 'no duplicate created');
 });
 
@@ -131,9 +138,9 @@ test('restore rejects a non-delete audit entry', async () => {
 });
 
 test('an admin can revert an edit to its previous values', async () => {
-  await admin.post('/bills').type('form').send({ bill_number: 'REV-1', bill_date: '2026-03-03', note: 'original' });
-  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['REV-1']);
-  await admin.post(`/bills/${id}`).type('form').send({ bill_number: 'REV-1', bill_date: '2026-04-04', note: 'changed' });
+  await createBill(admin, { bill_number: '62001', bill_date: '2026-03-03', note: 'original' });
+  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['62001']);
+  await editBill(admin, id, { bill_number: '62001', bill_date: '2026-04-04', note: 'changed' });
 
   const updId = await auditId("action = 'update' AND bill_id = " + id);
   const res = await admin.post(`/audit/${updId}/revert`).type('form').send({});
@@ -145,9 +152,9 @@ test('an admin can revert an edit to its previous values', async () => {
 });
 
 test('revert fails cleanly when the bill was since deleted', async () => {
-  await admin.post('/bills').type('form').send({ bill_number: 'REV-2', bill_date: '', note: 'a' });
-  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['REV-2']);
-  await admin.post(`/bills/${id}`).type('form').send({ bill_number: 'REV-2', bill_date: '', note: 'b' });
+  await createBill(admin, { bill_number: '62002', note: 'a' });
+  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['62002']);
+  await editBill(admin, id, { bill_number: '62002', note: 'b' });
   const updId = await auditId("action = 'update' AND bill_id = " + id);
   await admin.post(`/bills/${id}/delete`).type('form').send({});
 

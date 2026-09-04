@@ -10,8 +10,16 @@
 
   <form method="post" action="<%= mode === 'new' ? '/bills' : '/bills/' + bill.id %>">
     <label>Bill number *
-      <input type="text" name="bill_number" value="<%= bill.bill_number || '' %>" maxlength="100" autofocus required>
+      <input type="text" name="bill_number" value="<%= bill.bill_number || '' %>"
+             inputmode="numeric" pattern="[0-9]*" maxlength="20" autofocus required>
     </label>
+    <% if (mode === 'new') { %>
+    <label>Confirm bill number *
+      <input type="text" name="bill_number_confirm" value="<%= locals.confirmValue || '' %>"
+             inputmode="numeric" pattern="[0-9]*" maxlength="20" required
+             autocomplete="off" placeholder="Type the number again">
+    </label>
+    <% } %>
     <label>Bill date
       <input type="date" name="bill_date" value="<%= bill.bill_date || '' %>">
     </label>

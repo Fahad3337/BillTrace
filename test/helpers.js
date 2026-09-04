@@ -44,6 +44,13 @@ async function loginAs(username, password = 'password123') {
   return agent;
 }
 
+// POST /bills, auto-filling the double-entry "confirm" field unless overridden.
+function createBill(agent, fields = {}) {
+  const f = { bill_number: '', bill_date: '', note: '', ...fields };
+  if (f.bill_number_confirm === undefined) f.bill_number_confirm = f.bill_number;
+  return agent.post('/bills').type('form').send(f);
+}
+
 function cleanup() {
   return Promise.resolve(db.close()).finally(() => {
     for (const suffix of ['', '-wal', '-shm']) {
@@ -56,4 +63,4 @@ function cleanup() {
   });
 }
 
-module.exports = { app, db, request, init, createUser, loginAs, cleanup, dbFile };
+module.exports = { app, db, request, init, createUser, loginAs, createBill, cleanup, dbFile };

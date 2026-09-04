@@ -43,8 +43,13 @@ function validateBill(body) {
   const bill_date = String(body.bill_date || '').trim();
   const note = String(body.note || '').trim();
 
-  if (!bill_number) errors.push('Bill number is required.');
-  if (bill_number.length > 100) errors.push('Bill number is too long (max 100 characters).');
+  if (!bill_number) {
+    errors.push('Bill number is required.');
+  } else if (!/^\d+$/.test(bill_number)) {
+    errors.push('Bill number must be digits only (e.g. 6928).');
+  } else if (bill_number.length > 20) {
+    errors.push('Bill number is too long (max 20 digits).');
+  }
   if (bill_date && !/^\d{4}-\d{2}-\d{2}$/.test(bill_date)) errors.push('Date must be in YYYY-MM-DD format.');
   if (note.length > 1000) errors.push('Note is too long (max 1000 characters).');
 
@@ -130,14 +135,24 @@ router.get('/bills/new', requireAdmin, (req, res) => {
     title: 'Add bill record',
     mode: 'new',
     bill: { bill_number: '', bill_date: new Date().toISOString().slice(0, 10), note: '' },
+    confirmValue: '',
     errors: [],
   });
 });
 
 router.post('/bills', requireAdmin, async (req, res) => {
   const { errors, values } = validateBill(req.body);
+
+  // Double-entry check: the number must be typed the same way twice.
+  const confirm = String(req.body.bill_number_confirm || '').trim();
+  if (values.bill_number && confirm !== values.bill_number) {
+    errors.push('The two bill numbers do not match — re-check both.');
+  }
+
   if (errors.length) {
-    return res.status(400).render('bills/form', { title: 'Add bill record', mode: 'new', bill: values, errors });
+    return res
+      .status(400)
+      .render('bills/form', { title: 'Add bill record', mode: 'new', bill: values, confirmValue: confirm, errors });
   }
 
   const now = new Date().toISOString();
@@ -162,6 +177,7 @@ router.post('/bills', requireAdmin, async (req, res) => {
         title: 'Add bill record',
         mode: 'new',
         bill: values,
+        confirmValue: confirm,
         errors: [`Bill number "${values.bill_number}" already exists.`],
       });
     }
