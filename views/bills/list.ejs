@@ -26,14 +26,18 @@
 <% if (flash) { %><p class="alert <%= flash.type === 'ok' ? 'ok' : 'error' %>"><%= flash.message %></p><% } %>
 
 <form class="search" method="get" action="/">
-  <input type="text" name="q" value="<%= q %>" placeholder="Search bill number or note">
+  <input type="text" name="q" value="<%= q %>" placeholder="Enter the exact bill number">
   <input type="hidden" name="sort" value="<%= sort %>">
   <button type="submit">Search</button>
   <% if (q) { %><a class="button ghost" href="/">Clear</a><% } %>
 </form>
 
 <% if (bills.length === 0) { %>
-  <p class="empty">No records<%= q ? ' match your search' : ' yet' %>.</p>
+  <% if (q) { %>
+    <p class="empty">No bill has the number &ldquo;<%= q %>&rdquo;. Check it for a typo &mdash; the search matches the full bill number exactly.</p>
+  <% } else { %>
+    <p class="empty">No records yet.</p>
+  <% } %>
 <% } else { %>
 <div class="table-wrap">
 <table class="grid">

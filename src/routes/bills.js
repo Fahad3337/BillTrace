@@ -17,12 +17,11 @@ const listSelect = `
   LEFT JOIN users uu ON uu.id = b.updated_by
 `;
 
+// Exact bill-number lookup (case-insensitive: ILIKE with no wildcards). A search
+// that doesn't match a whole bill number returns nothing on purpose.
 function buildFilter(q) {
   if (!q) return { where: '', params: [] };
-  return {
-    where: 'WHERE b.bill_number ILIKE ? OR b.note ILIKE ?',
-    params: [`%${q}%`, `%${q}%`],
-  };
+  return { where: 'WHERE b.bill_number ILIKE ?', params: [q] };
 }
 
 function parseSort(sort) {

@@ -35,7 +35,8 @@ Open <http://localhost:3000> and sign in.
 ## Everyday use
 
 - **Add a record**: *Add record* → enter the bill number, pick the date, optional note.
-- **Find a record**: type part of a bill number or note into the search box.
+- **Find a record**: type the **exact** bill number into the search box (case-insensitive).
+  A partial number or a note keyword returns nothing, with a "check for a typo" hint.
 - **Export**: *Export CSV* downloads the current list (respects the active search) for
   handing to an auditor.
 - **Audit log** (admin): *Audit log* shows who did what and when, filterable by action

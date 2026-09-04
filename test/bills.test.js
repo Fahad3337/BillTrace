@@ -59,11 +59,34 @@ test('a viewer cannot add a bill', async () => {
   assert.equal(row, undefined);
 });
 
-test('search matches case-insensitively', async () => {
-  await addBill(admin, { bill_number: 'ABC-XYZ-9' });
-  const res = await admin.get('/').query({ q: 'abc-xyz' });
+test('search is an exact bill-number match (case-insensitive)', async () => {
+  await addBill(admin, { bill_number: 'ABC-XYZ-9', note: 'findable note' });
+
+  const exact = await admin.get('/').query({ q: 'abc-xyz-9' });
+  assert.equal(exact.status, 200);
+  assert.match(exact.text, /ABC-XYZ-9/);
+});
+
+// Helper: the "(N)" total the list header renders.
+function shownTotal(html) {
+  return Number(html.match(/Bill records <span class="muted">\((\d+)\)<\/span>/)[1]);
+}
+
+test('a partial bill number returns nothing and shows the typo hint', async () => {
+  await addBill(admin, { bill_number: 'PARTIAL-1234' });
+  await admin.get('/'); // clear the "added" flash
+  const res = await admin.get('/').query({ q: 'PARTIAL' });
   assert.equal(res.status, 200);
-  assert.match(res.text, /ABC-XYZ-9/);
+  assert.equal(shownTotal(res.text), 0);
+  assert.match(res.text, /typo/i);
+});
+
+test('search does not match on the note field', async () => {
+  await addBill(admin, { bill_number: 'NOTE-HOST-1', note: 'special-keyword' });
+  await admin.get('/');
+  const res = await admin.get('/').query({ q: 'special-keyword' });
+  assert.equal(res.status, 200);
+  assert.equal(shownTotal(res.text), 0);
 });
 
 test('admin can edit a bill', async () => {
