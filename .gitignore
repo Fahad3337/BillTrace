@@ -1,5 +1,28 @@
+# Dependencies
 node_modules/
+
+# Secrets & environment
 .env
+.env.*
+!.env.example
+
+# Local database files (SQLite dev backend)
 data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# Logs
 *.log
+npm-debug.log*
+
+# OS / editor
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Test / coverage artifacts
+coverage/
+.nyc_output/
