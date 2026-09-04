@@ -29,6 +29,8 @@ test('admin sees the audit log', async () => {
   assert.equal(res.status, 200);
   assert.match(res.text, /Audit log/);
   assert.match(res.text, /AUD-1/);
+  // timestamps are localisable <time> elements, not bare UTC text
+  assert.match(res.text, /<time class="localtime" datetime="20\d\d-\d\d-\d\dT[\d:.]+Z">/);
 });
 
 test('the action filter narrows the results', async () => {

@@ -131,3 +131,10 @@ test('CSV export is available to a viewer and has the expected header', async ()
   assert.match(res.headers['content-type'], /text\/csv/);
   assert.match(res.text.split('\n')[0], /^bill_number,bill_date,note,created_at,created_by,updated_at,updated_by$/);
 });
+
+test('the list renders timestamps as localisable <time> elements (UTC fallback text)', async () => {
+  await addBill(admin, { bill_number: 'TS-1', bill_date: '2026-09-01' });
+  const res = await admin.get('/');
+  assert.match(res.text, /<time class="localtime" datetime="20\d\d-\d\d-\d\dT[\d:.]+Z">/);
+  assert.match(res.text, /\d\d:\d\d UTC<\/time>/);
+});
