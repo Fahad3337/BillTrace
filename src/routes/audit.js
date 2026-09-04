@@ -27,13 +27,10 @@ async function getEntry(id) {
   return { ...row, details: row.details ? JSON.parse(row.details) : null };
 }
 
-// ---- Audit log view --------------------------------------------------------
-
-router.get('/audit', requireAdmin, async (req, res) => {
-  const action = ACTIONS.includes(req.query.action) ? req.query.action : '';
-  const billNumber = String(req.query.bill_number || '').trim();
-  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-
+// Shared filter for the audit view and its CSV export.
+function buildAuditFilter(query) {
+  const action = ACTIONS.includes(query.action) ? query.action : '';
+  const billNumber = String(query.bill_number || '').trim();
   const clauses = [];
   const params = [];
   if (action) {
@@ -44,7 +41,27 @@ router.get('/audit', requireAdmin, async (req, res) => {
     clauses.push('a.bill_id IN (SELECT id FROM bills WHERE bill_number ILIKE ?)');
     params.push(`%${billNumber}%`);
   }
-  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  return { action, billNumber, where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', params };
+}
+
+// Human-readable one-line rendering of an audit entry's details object.
+function summariseDetails(d) {
+  if (!d) return '';
+  if (d.values) return Object.entries(d.values).map(([k, v]) => `${k}=${v ?? ''}`).join('; ');
+  if (d.changes) {
+    return Object.entries(d.changes)
+      .map(([k, c]) => `${k}: "${c.from ?? ''}" -> "${c.to ?? ''}"`)
+      .join('; ');
+  }
+  if (d.username) return `user: ${d.username}${d.role ? ` (${d.role})` : ''}`;
+  return JSON.stringify(d);
+}
+
+// ---- Audit log view --------------------------------------------------------
+
+router.get('/audit', requireAdmin, async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const { action, billNumber, where, params } = buildAuditFilter(req.query);
 
   const total = (await db.get(`SELECT COUNT(*) AS n FROM audit_log a ${where}`, params)).n;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -75,6 +92,44 @@ router.get('/audit', requireAdmin, async (req, res) => {
     flash: req.session.flash || null,
   });
   delete req.session.flash;
+});
+
+// ---- CSV export (honours the same action / bill-number filters) -----------
+
+router.get('/audit/export.csv', requireAdmin, async (req, res) => {
+  const { where, params } = buildAuditFilter(req.query);
+
+  const rows = await db.all(
+    `SELECT a.ts, a.username, a.action, a.details, b.bill_number
+     FROM audit_log a
+     LEFT JOIN bills b ON b.id = a.bill_id
+     ${where}
+     ORDER BY a.ts DESC, a.id DESC`,
+    params
+  );
+
+  const header = ['timestamp', 'user', 'action', 'bill_number', 'details'];
+  const escape = (v) => {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [header.join(',')];
+  for (const r of rows) {
+    let details = '';
+    try {
+      details = summariseDetails(r.details ? JSON.parse(r.details) : null);
+    } catch (_) {
+      details = r.details || '';
+    }
+    lines.push([r.ts, r.username, r.action, r.bill_number, details].map(escape).join(','));
+  }
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="audit-log-${new Date().toISOString().slice(0, 10)}.csv"`
+  );
+  res.send(lines.join('\n') + '\n');
 });
 
 // ---- Restore a deleted bill from its audit entry ---------------------------

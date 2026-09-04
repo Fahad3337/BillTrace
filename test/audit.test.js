@@ -53,6 +53,35 @@ test('the bill-number filter matches case-insensitively', async () => {
   assert.match(res.text, /AUD-1/);
 });
 
+// ---- CSV export --------------------------------------------------------------
+
+test('admin can export the audit log as CSV', async () => {
+  const res = await admin.get('/audit/export.csv');
+  assert.equal(res.status, 200);
+  assert.match(res.headers['content-type'], /text\/csv/);
+  assert.match(res.headers['content-disposition'], /attachment; filename="audit-log-\d{4}-\d{2}-\d{2}\.csv"/);
+
+  const [head, ...rows] = res.text.trim().split('\n');
+  assert.equal(head, 'timestamp,user,action,bill_number,details');
+  assert.ok(rows.some((r) => r.includes('AUD-1') && r.includes('create')));
+});
+
+test('the CSV export honours the action filter', async () => {
+  const all = (await admin.get('/audit/export.csv')).text.trim().split('\n').length;
+  const res = await admin.get('/audit/export.csv').query({ action: 'create' });
+  const lines = res.text.trim().split('\n');
+  assert.ok(lines.length < all, 'filtered export is shorter');
+  for (const row of lines.slice(1)) {
+    assert.match(row, /,create,/);
+  }
+});
+
+test('a viewer cannot export the audit log', async () => {
+  const viewer = await loginAs('viewer');
+  const res = await viewer.get('/audit/export.csv');
+  assert.equal(res.status, 403);
+});
+
 // ---- Restore / revert ----------------------------------------------------
 
 async function auditId(where) {

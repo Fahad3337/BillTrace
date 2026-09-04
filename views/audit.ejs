@@ -16,7 +16,19 @@
   }
 %>
 
-<h1>Audit log <span class="muted">(<%= total %>)</span></h1>
+<%
+  var auditQs = [];
+  if (action) auditQs.push('action=' + encodeURIComponent(action));
+  if (billNumber) auditQs.push('bill_number=' + encodeURIComponent(billNumber));
+  var exportHref = '/audit/export.csv' + (auditQs.length ? '?' + auditQs.join('&') : '');
+%>
+
+<div class="page-head">
+  <h1>Audit log <span class="muted">(<%= total %>)</span></h1>
+  <div class="actions">
+    <a class="button" href="<%= exportHref %>">Export CSV</a>
+  </div>
+</div>
 
 <% if (typeof flash !== 'undefined' && flash) { %>
   <p class="alert <%= flash.type === 'ok' ? 'ok' : 'error' %>"><%= flash.message %></p>

@@ -40,9 +40,10 @@ Open <http://localhost:3000> and sign in.
 - **Export**: *Export CSV* downloads the current list (respects the active search) for
   handing to an auditor.
 - **Audit log** (admin): *Audit log* shows who did what and when, filterable by action
-  and bill number. Each **delete** row has a *Restore* button that re-creates the bill
-  from the recorded values; each **edit** row has *Revert*, which puts the bill back to
-  its previous values (both refuse if the bill number is now taken).
+  and bill number, with **Export CSV** (respects the active filter). Each **delete** row
+  has a *Restore* button that re-creates the bill from the recorded values; each **edit**
+  row has *Revert*, which puts the bill back to its previous values (both refuse if the
+  bill number is now taken).
 - **Users** (admin): *Users* — create viewer/admin accounts, reset passwords, remove
   accounts. The last remaining admin cannot be deleted.
 
