@@ -14,9 +14,9 @@
   <tbody>
     <% users.forEach(function (u) { %>
     <tr>
-      <td class="mono"><%= u.username %></td>
-      <td><span class="role-pill <%= u.role %>"><%= u.role %></span></td>
-      <td class="muted"><%= (u.created_at || '').slice(0, 10) %></td>
+      <td class="mono" data-label="Username"><%= u.username %></td>
+      <td data-label="Role"><span class="role-pill <%= u.role %>"><%= u.role %></span></td>
+      <td class="muted" data-label="Created"><%= (u.created_at || '').slice(0, 10) %></td>
       <td class="row-actions">
         <form method="post" action="/users/<%= u.id %>/password" class="inline-pw">
           <input type="password" name="password" placeholder="New password" minlength="8" required>

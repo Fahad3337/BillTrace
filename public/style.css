@@ -450,6 +450,7 @@ td.row-actions > * + * { margin-left: 16px; }
   white-space: nowrap;
 }
 .tag--create,
+.tag--restore,
 .tag--user_create { background: var(--ok-bg); color: var(--ok-ink); border-color: var(--ok-line); }
 .tag--update,
 .tag--user_password_reset { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
@@ -509,11 +510,95 @@ td.row-actions > * + * { margin-left: 16px; }
 @media (max-width: 680px) {
   .topbar { flex-wrap: wrap; padding: 10px 16px; gap: 8px 14px; }
   .topbar nav { order: 3; width: 100%; }
+  .topbar .user { margin-left: auto; font-size: 12.5px; gap: 8px; }
+  .topbar .user form button { padding: 7px 12px; }
   .container { padding: 0 16px; margin-top: 22px; }
   h1 { font-size: 22px; }
   .card { padding: 20px; }
   .card.login { margin-top: 5vh; padding: 24px; }
   .page-head { align-items: flex-start; }
+}
+
+/* Phones: stack each table row into a labelled card, and grow tap targets. */
+@media (max-width: 620px) {
+  body { font-size: 15.5px; }
+
+  .table-wrap {
+    overflow: visible;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  table.grid { font-size: 14.5px; background: transparent; }
+  table.grid thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  table.grid, table.grid tbody, table.grid tr, table.grid td { display: block; width: 100%; }
+
+  table.grid tbody tr,
+  table.grid tbody tr:nth-child(even) {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    margin: 0 0 12px;
+    padding: 4px 0;
+  }
+  table.grid tbody tr:hover { background: var(--card); }
+
+  table.grid td {
+    border: none;
+    border-bottom: 1px solid var(--line);
+    padding: 9px 14px;
+    display: flex;
+    gap: 14px;
+    justify-content: space-between;
+    align-items: baseline;
+    text-align: right;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  table.grid tr td:last-child { border-bottom: none; }
+  table.grid td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--muted);
+  }
+  table.grid td:empty { display: none; }
+  table.grid td:not([data-label]):not(.row-actions) { display: none; }
+  table.grid td.row-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    background: var(--card-sunken);
+    text-align: left;
+  }
+  table.grid td.row-actions::before { display: none; }
+  table.grid td.mono { white-space: normal; }
+
+  /* Reset password form inside the actions cell */
+  td.row-actions .inline-pw { width: 100%; gap: 8px; }
+  td.row-actions .inline-pw input { flex: 1; width: auto; }
+  td.row-actions > * + * { margin-left: 0; }
+
+  /* Bigger touch targets */
+  button, .button { padding: 11px 16px; }
+  button.link, .link { padding: 8px 4px; }
+  .topbar nav a { padding: 8px 13px; }
+
+  /* Forms & search go full width */
+  .form-actions { flex-direction: column; align-items: stretch; }
+  .form-actions > * { width: 100%; }
+  .search { padding: 10px; }
+  .search input[type=text], .search select { min-width: 0; width: 100%; flex-basis: 100%; }
+  .search button, .search .button { width: 100%; }
+
+  .pager { flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {

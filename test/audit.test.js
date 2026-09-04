@@ -52,3 +52,75 @@ test('the bill-number filter matches case-insensitively', async () => {
   assert.equal(res.status, 200);
   assert.match(res.text, /AUD-1/);
 });
+
+// ---- Restore / revert ----------------------------------------------------
+
+async function auditId(where) {
+  const row = await db.get(`SELECT id FROM audit_log WHERE ${where} ORDER BY id DESC`);
+  return row && row.id;
+}
+
+test('an admin can restore a deleted bill from its audit entry', async () => {
+  await admin.post('/bills').type('form').send({ bill_number: 'REST-1', bill_date: '2026-01-02', note: 'keep me' });
+  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['REST-1']);
+  await admin.post(`/bills/${id}/delete`).type('form').send({});
+  assert.equal(await db.get('SELECT * FROM bills WHERE bill_number = ?', ['REST-1']), undefined);
+
+  const delId = await auditId("action = 'delete'");
+  const res = await admin.post(`/audit/${delId}/restore`).type('form').send({});
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.location, '/');
+
+  const back = await db.get('SELECT * FROM bills WHERE bill_number = ?', ['REST-1']);
+  assert.ok(back, 'the bill exists again');
+  assert.equal(back.bill_date, '2026-01-02');
+  assert.equal(back.note, 'keep me');
+  assert.ok(await db.get("SELECT * FROM audit_log WHERE action = 'restore' AND bill_id = ?", [back.id]));
+});
+
+test('restore fails cleanly when the bill number is taken again', async () => {
+  await admin.post('/bills').type('form').send({ bill_number: 'REST-2', bill_date: '', note: '' });
+  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['REST-2']);
+  await admin.post(`/bills/${id}/delete`).type('form').send({});
+  await admin.post('/bills').type('form').send({ bill_number: 'REST-2', bill_date: '', note: 'squatter' });
+
+  const delId = await auditId("action = 'delete' AND bill_id = " + id);
+  const res = await admin.post(`/audit/${delId}/restore`).type('form').send({});
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.location, '/audit');
+
+  const rows = await db.all('SELECT * FROM bills WHERE bill_number = ?', ['REST-2']);
+  assert.equal(rows.length, 1, 'no duplicate created');
+});
+
+test('restore rejects a non-delete audit entry', async () => {
+  const createId = await auditId("action = 'create'");
+  const res = await admin.post(`/audit/${createId}/restore`).type('form').send({});
+  assert.equal(res.status, 404);
+});
+
+test('an admin can revert an edit to its previous values', async () => {
+  await admin.post('/bills').type('form').send({ bill_number: 'REV-1', bill_date: '2026-03-03', note: 'original' });
+  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['REV-1']);
+  await admin.post(`/bills/${id}`).type('form').send({ bill_number: 'REV-1', bill_date: '2026-04-04', note: 'changed' });
+
+  const updId = await auditId("action = 'update' AND bill_id = " + id);
+  const res = await admin.post(`/audit/${updId}/revert`).type('form').send({});
+  assert.equal(res.status, 302);
+
+  const bill = await db.get('SELECT * FROM bills WHERE id = ?', [id]);
+  assert.equal(bill.bill_date, '2026-03-03');
+  assert.equal(bill.note, 'original');
+});
+
+test('revert fails cleanly when the bill was since deleted', async () => {
+  await admin.post('/bills').type('form').send({ bill_number: 'REV-2', bill_date: '', note: 'a' });
+  const { id } = await db.get('SELECT id FROM bills WHERE bill_number = ?', ['REV-2']);
+  await admin.post(`/bills/${id}`).type('form').send({ bill_number: 'REV-2', bill_date: '', note: 'b' });
+  const updId = await auditId("action = 'update' AND bill_id = " + id);
+  await admin.post(`/bills/${id}/delete`).type('form').send({});
+
+  const res = await admin.post(`/audit/${updId}/revert`).type('form').send({});
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.location, '/audit');
+});

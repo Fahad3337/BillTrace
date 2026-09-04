@@ -18,6 +18,10 @@
 
 <h1>Audit log <span class="muted">(<%= total %>)</span></h1>
 
+<% if (typeof flash !== 'undefined' && flash) { %>
+  <p class="alert <%= flash.type === 'ok' ? 'ok' : 'error' %>"><%= flash.message %></p>
+<% } %>
+
 <form class="search" method="get" action="/audit">
   <select name="action">
     <option value="">All actions</option>
@@ -33,16 +37,23 @@
 <div class="table-wrap">
 <table class="grid">
   <thead>
-    <tr><th>When (UTC)</th><th>User</th><th>Action</th><th>Bill</th><th>Details</th></tr>
+    <tr><th>When (UTC)</th><th>User</th><th>Action</th><th>Bill</th><th>Details</th><th></th></tr>
   </thead>
   <tbody>
     <% rows.forEach(function (r) { %>
     <tr>
-      <td class="muted nowrap"><%= r.ts.replace('T', ' ').slice(0, 19) %></td>
-      <td><%= r.username || '—' %></td>
-      <td><span class="tag tag--<%= r.action %>"><%= r.action %></span></td>
-      <td class="mono"><%= r.bill_number || '' %></td>
-      <td class="details"><%= summarise(r) %></td>
+      <td class="muted nowrap" data-label="When (UTC)"><%= r.ts.replace('T', ' ').slice(0, 19) %></td>
+      <td data-label="User"><%= r.username || '—' %></td>
+      <td data-label="Action"><span class="tag tag--<%= r.action %>"><%= r.action %></span></td>
+      <td class="mono" data-label="Bill"><%= r.bill_number || '' %></td>
+      <td class="details" data-label="Details"><%= summarise(r) %></td>
+      <% if (r.action === 'delete' && r.details && r.details.values && r.details.values.bill_number) { %>
+        <td class="row-actions"><form method="post" action="/audit/<%= r.id %>/restore" data-confirm="Restore bill <%= r.details.values.bill_number %>?"><button type="submit" class="link">Restore</button></form></td>
+      <% } else if (r.action === 'update' && r.bill_id && r.bill_number && r.details && r.details.changes) { %>
+        <td class="row-actions"><form method="post" action="/audit/<%= r.id %>/revert" data-confirm="Revert this change to bill <%= r.bill_number %>?"><button type="submit" class="link">Revert</button></form></td>
+      <% } else { %>
+        <td></td>
+      <% } %>
     </tr>
     <% }); %>
   </tbody>
