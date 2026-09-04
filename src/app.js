@@ -53,8 +53,20 @@ app.use(helmet({ contentSecurityPolicy: { directives: { 'default-src': ["'self'"
 app.use(express.urlencoded({ extended: false }));
 app.use('/static', express.static(path.join(__dirname, '..', 'public')));
 
-// Unauthenticated health check for the hosting platform.
-app.get('/healthz', (req, res) => res.type('text').send('ok'));
+// Unauthenticated health check for the hosting platform. Also touches the
+// database with a trivial query — a scheduled ping at this endpoint (see
+// .github/workflows/keepalive.yml) doubles as activity that keeps a free-tier
+// Supabase project from auto-pausing after 7 days idle. Render considers a
+// non-2xx response unhealthy, which is correct here: if the DB can't be
+// reached the app can't do anything useful anyway.
+app.get('/healthz', async (req, res) => {
+  try {
+    await db.get('SELECT 1 AS ok');
+    res.type('text').send('ok');
+  } catch (err) {
+    res.status(503).type('text').send('db unreachable');
+  }
+});
 
 app.use(
   session({

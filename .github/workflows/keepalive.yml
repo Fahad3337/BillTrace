@@ -1,0 +1,31 @@
+name: Keep database awake
+
+# Free-tier Supabase pauses a project after 7 days with no activity, and a
+# non-technical team has no way to un-pause it themselves. This pings the
+# live app's health check (which does one trivial DB query) every 6 hours —
+# comfortably inside that 7-day window — so the project never goes idle
+# long enough to pause. As a side effect it also keeps Render's free
+# instance from cold-sleeping between visits.
+#
+# Update APP_URL below if the Render URL ever changes.
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {} # lets you trigger a run manually from the Actions tab
+
+env:
+  APP_URL: https://billtrace-p9si.onrender.com/healthz
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health check
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$APP_URL")
+          echo "Response: $code"
+          if [ "$code" != "200" ]; then
+            echo "::warning::Health check returned $code (app or database may be down/paused)"
+            exit 1
+          fi
