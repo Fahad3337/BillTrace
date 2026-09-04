@@ -1,0 +1,17 @@
+# Render blueprint. In Render: New -> Blueprint -> connect this repo.
+# You will be prompted to paste DATABASE_URL (the Supabase session-pooler string).
+services:
+  - type: web
+    name: billtrace
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false

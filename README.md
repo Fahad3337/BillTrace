@@ -43,6 +43,23 @@ Open <http://localhost:3000> and sign in.
 - **Users** (admin): *Users* — create viewer/admin accounts, reset passwords, remove
   accounts. The last remaining admin cannot be deleted.
 
+## Deploying (Render)
+
+The repo has a `render.yaml` blueprint.
+
+1. Push to GitHub (already done: `Fahad3337/BillTrace`).
+2. Render → **New → Blueprint** → connect the repo. It reads `render.yaml`:
+   web service, `npm install` / `npm start`, health check at `/healthz`,
+   `NODE_ENV=production`, and an auto-generated `SESSION_SECRET`.
+3. When prompted, paste **`DATABASE_URL`** — the Supabase **session pooler** string
+   (`Connect → Session pooler`), not the direct connection.
+4. Deploy. First request after ~15 min idle is slow on the free tier (the service
+   sleeps); upgrade to a paid instance to keep it warm.
+
+In production the app sets `trust proxy` and a `secure` session cookie, so it must be
+reached over HTTPS (Render does this automatically). Running with
+`NODE_ENV=production` over plain HTTP locally will break login.
+
 ## Tests
 
 ```bash

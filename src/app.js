@@ -39,15 +39,22 @@ function buildSessionStore() {
   });
 }
 
+const IS_PROD = process.env.NODE_ENV === 'production';
+
 const app = express();
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '..', 'views'));
-app.set('trust proxy', 'loopback');
+// In production the app sits behind one reverse proxy (Render/Fly/nginx) that
+// terminates TLS; trust it so req.secure, req.ip, and the rate limiter work.
+app.set('trust proxy', IS_PROD ? 1 : 'loopback');
 
 app.use(helmet({ contentSecurityPolicy: { directives: { 'default-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inline'"] } } }));
 app.use(express.urlencoded({ extended: false }));
 app.use('/static', express.static(path.join(__dirname, '..', 'public')));
+
+// Unauthenticated health check for the hosting platform.
+app.get('/healthz', (req, res) => res.type('text').send('ok'));
 
 app.use(
   session({
@@ -55,7 +62,12 @@ app.use(
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    cookie: { httpOnly: true, sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 },
+    cookie: {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: IS_PROD, // HTTPS-only cookie once deployed behind TLS
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    },
   })
 );
 
