@@ -13,6 +13,15 @@ data/
 *.db-wal
 *.sqlite
 
+# Database dumps / backups — keep these out of version control
+/backup.sql
+*.dump
+db-backup-*.sql
+
+# Supabase CLI local state (supabase/.temp/pooler-url holds the DB password!)
+supabase/.temp/
+supabase/.branches/
+
 # Logs
 *.log
 npm-debug.log*

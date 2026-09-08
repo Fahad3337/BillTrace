@@ -1,0 +1,32 @@
+name: Keep scheduled workflows enabled
+
+# GitHub automatically disables a repository's *scheduled* workflows after
+# 60 days with no commits. If that happened, keepalive.yml would stop running
+# and ~7 days later the free-tier Supabase project would pause — leaving the
+# app unusable until someone manually restored it from the Supabase dashboard.
+#
+# This job pushes an empty (no-op) commit twice a month, which resets that
+# 60-day timer, so keepalive.yml keeps running even if nobody touches the
+# code for months. The commit changes nothing and triggers no other workflow.
+
+on:
+  schedule:
+    - cron: '17 4 1,15 * *' # 04:17 UTC on the 1st and 15th (twice a month)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency: keep-active
+
+jobs:
+  touch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Empty commit to reset the 60-day inactivity timer
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit --allow-empty -m 'chore: keep scheduled workflows enabled'
+          git push
